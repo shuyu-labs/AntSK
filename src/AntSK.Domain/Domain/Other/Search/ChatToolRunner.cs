@@ -25,7 +25,10 @@ public static class ChatToolRunner
             yield break;
         }
 
-        settings.ToolCallBehavior = ToolCallBehavior.EnableKernelFunctions;
+        var allowedFunctions = kernel.Plugins.GetFunctionsMetadata().Where(function =>
+            (enableWebSearch && function.PluginName == "ParallelSearch") ||
+            (hasCustomTools && function.PluginName == "AntSKFunctions")).ToArray();
+        settings.ToolCallBehavior = ToolCallBehavior.EnableFunctions(allowedFunctions.Select(function => function.ToOpenAIFunction()));
         // Bound tool use so a model that repeatedly requests tools cannot loop forever.
         for (var turn = 0; turn < 10; turn++)
         {
@@ -41,6 +44,11 @@ public static class ChatToolRunner
             foreach (var call in calls)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                if (!allowedFunctions.Any(function => function.PluginName == call.PluginName && function.Name == call.FunctionName))
+                {
+                    history.Add(new FunctionResultContent(call, "This tool is not enabled for this application.").ToChatMessage());
+                    continue;
+                }
                 var output = await call.InvokeAsync(kernel, cancellationToken);
                 history.Add(output.ToChatMessage());
             }

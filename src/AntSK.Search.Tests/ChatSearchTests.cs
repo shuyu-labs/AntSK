@@ -192,6 +192,39 @@ public class ChatSearchTests
         Assert.Empty(server.Requests);
     }
 
+    [Theory]
+    [InlineData("web_search")]
+    [InlineData("internal")]
+    public async Task ModelCannotInvokeDisabledOrInternalTools(string tool)
+    {
+        using var server = new McpHandler();
+        var model = new ScriptedModel(tool);
+        await Run(CreateService(server, model), new Apps { ApiFunctionList = "saved-custom-tool", EnableWebSearch = false }, new ChatHistory());
+        Assert.Contains("not enabled", Assert.Single(model.ConsumedResults));
+        Assert.Empty(server.Requests);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task OpenAIConnectorAdvertisesOnlyApplicationEnabledTools(bool webSearch)
+    {
+        using var openAI = new OpenAIHandler();
+        using var httpClient = new HttpClient(openAI);
+        var builder = Kernel.CreateBuilder();
+        builder.AddOpenAIChatCompletion("test-model", "test-only", httpClient: httpClient);
+        var model = builder.Build().GetRequiredService<IChatCompletionService>();
+        using var server = new McpHandler();
+        var service = new ChatService(new TestKernelService(model), null!, null!, null!, new TestHttpFactory(server, null));
+        await Run(service, new Apps { EnableWebSearch = webSearch, ApiFunctionList = webSearch ? null : "saved-tool" }, new ChatHistory());
+        var tools = openAI.Request.GetProperty("tools").EnumerateArray()
+            .Select(tool => tool.GetProperty("function").GetProperty("name").GetString()!).ToArray();
+        Assert.DoesNotContain(tools, name => name.Contains("KMSPlugin"));
+        Assert.Equal(webSearch ? 2 : 1, tools.Length);
+        Assert.All(tools, name => Assert.StartsWith(webSearch ? "ParallelSearch" : "AntSKFunctions", name));
+        Assert.Empty(server.Requests);
+    }
+
     // Scripted model, not model-quality evaluation: the real ChatService, SK dispatcher,
     // official MCP transport and downstream tool-message consumption all execute.
     private static ChatService CreateService(McpHandler server, ScriptedModel model, TimeSpan? timeout = null) =>
@@ -214,13 +247,18 @@ public class ChatSearchTests
         }
     }
 
-    private sealed class TestKernelService(ScriptedModel model) : IKernelService
+    private sealed class TestKernelService(IChatCompletionService model) : IKernelService
     {
         public Kernel GetKernelByApp(Apps app)
         {
             var builder = Kernel.CreateBuilder();
             builder.Services.AddSingleton<IChatCompletionService>(model);
-            return builder.Build();
+            var kernel = builder.Build();
+            kernel.ImportPluginFromFunctions("KMSPlugin", new[]
+            {
+                KernelFunctionFactory.CreateFromMethod(() => "internal data must not escape", "Ask")
+            });
+            return kernel;
         }
         public Kernel GetKernelByAIModelID(string modelid) => throw new NotSupportedException();
         public void ImportFunctionsByApp(Apps app, Kernel kernel) =>
@@ -252,8 +290,8 @@ public class ChatSearchTests
                     "invalid_fetch" => new KernelArguments { ["urls"] = new[] { "file:///etc/passwd" } },
                     _ => new KernelArguments()
                 };
-                response.Items.Add(new FunctionCallContent(call == "invalid_fetch" ? "web_fetch" : call,
-                    call == "custom" ? "AntSKFunctions" : "ParallelSearch", Guid.NewGuid().ToString(), args));
+                response.Items.Add(new FunctionCallContent(call == "invalid_fetch" ? "web_fetch" : call == "internal" ? "Ask" : call,
+                    call == "custom" ? "AntSKFunctions" : call == "internal" ? "KMSPlugin" : "ParallelSearch", Guid.NewGuid().ToString(), args));
             }
             else response.Content = "Answer with https://example.org/source";
             return Task.FromResult<IReadOnlyList<ChatMessageContent>>(new[] { response });
@@ -269,6 +307,22 @@ public class ChatSearchTests
 
     private sealed record RecordedRequest(string Method, string Url, string? UserAgent, string? Authorization);
     private sealed record RecordedCall(string Name, string SessionId, JsonElement Arguments);
+
+    private sealed class OpenAIHandler : HttpMessageHandler
+    {
+        public JsonElement Request { get; private set; }
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Request = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(cancellationToken)).RootElement.Clone();
+            return new(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                    {"id":"test","object":"chat.completion","created":1,"model":"test-model",
+                     "choices":[{"index":0,"message":{"role":"assistant","content":"answer"},"finish_reason":"stop"}]}
+                    """, Encoding.UTF8, "application/json")
+            };
+        }
+    }
 
     private sealed class McpHandler : HttpMessageHandler
     {

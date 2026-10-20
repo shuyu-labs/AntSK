@@ -12,7 +12,9 @@
 该功能只用于会话应用，不会把知识库检索自动转为网络搜索。模型没有调用网页工具时不会建立 MCP 连接。
 
 服务有匿名用量限制。网络错误、服务限流和超时会作为工具结果交给模型，不会自动换用其他搜索服务或身份重试。
-单次工具请求限时 30 秒，每轮会话最多进行 10 轮工具调用。需要支持函数调用的会话模型。
+单次工具请求限时 30 秒，每轮会话最多进行 10 轮工具调用。
+支持 OpenAI、Azure OpenAI，以及实现 OpenAI 兼容工具调用的本地模型（例如具备工具调用能力的 Ollama 模型）。
+SparkDesk 连接器只暴露原有的 `AntSKFunctions` 插件，暂不支持这些网页工具；其他连接器的支持未验证。
 
 浏览器会话保存独立的随机搜索标识，同一会话的搜索、读取和后续提问共用该标识；清空聊天记录时创建新标识。
 OpenAI 兼容 API 的流式和非流式请求使用相同工具流程。每个独立 API 请求是一次研究运行，
@@ -22,6 +24,9 @@ New chat applications enable web search by default. Turn **联网搜索** off in
 both web tools. Existing applications remain disabled until explicitly enabled. Parallel provides anonymous web
 search in Fast mode and page extraction without an account or API key. Existing custom tools and knowledge-base
 retrieval remain available with their saved settings.
+
+Use an OpenAI or Azure OpenAI chat model, or an OpenAI-compatible local model that supports tool calls.
+The SparkDesk connector does not expose these web tools; other connectors have not been verified.
 
 Search questions and fetched URLs leave your deployment and go to Parallel. Disable this setting before saving
 an application intended for offline use or sensitive data. A tool-capable model decides when to search, and source
