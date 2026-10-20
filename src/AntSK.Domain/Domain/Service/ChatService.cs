@@ -1,4 +1,6 @@
-﻿using AntSK.Domain.Common.DependencyInjection;
+﻿using AntSK.Domain.Domain.Other.Search;
+using System.Runtime.CompilerServices;
+using AntSK.Domain.Common.DependencyInjection;
 using AntSK.Domain.Domain.Interface;
 using AntSK.Domain.Domain.Model;
 using AntSK.Domain.Domain.Model.Constant;
@@ -26,65 +28,31 @@ namespace AntSK.Domain.Domain.Service
         IKernelService _kernelService,
         IKMService _kMService,
         IKmsDetails_Repositories _kmsDetails_Repositories,
-        IAIModels_Repositories _aIModels_Repositories
+        IAIModels_Repositories _aIModels_Repositories,
+        IHttpClientFactory _httpClientFactory
         ) : IChatService
     {
         /// <summary>
         /// 发送消息
         /// </summary>
         /// <param name="app"></param>
-        /// <param name="questions"></param>
         /// <param name="history"></param>
+        /// <param name="searchConversation">会话拥有的搜索标识；为空时随 history 生命周期创建。</param>
+        /// <param name="cancellationToken"></param>
         /// <returns></returns>
-        public async IAsyncEnumerable<string> SendChatByAppAsync(Apps app, ChatHistory history)
+        public async IAsyncEnumerable<string> SendChatByAppAsync(
+            Apps app, ChatHistory history, WebSearchConversation? searchConversation = null,
+            [EnumeratorCancellation] CancellationToken cancellationToken = default)
         {
-            var _kernel = _kernelService.GetKernelByApp(app);
-            var chat = _kernel.GetRequiredService<IChatCompletionService>();
-            var temperature = app.Temperature / 100;//存的是0~100需要缩小
-            OpenAIPromptExecutionSettings settings = new() { Temperature = temperature };
-            List<string> completionList = new List<string>();
-            if (!string.IsNullOrEmpty(app.ApiFunctionList) || !string.IsNullOrEmpty(app.NativeFunctionList))//这里还需要加上本地插件的
-            {
-                _kernelService.ImportFunctionsByApp(app, _kernel);
-                settings.ToolCallBehavior = ToolCallBehavior.EnableKernelFunctions;
-                while (true)
-                {
-                    ChatMessageContent result = await chat.GetChatMessageContentAsync(history, settings, _kernel);
-                    if (result.Content is not null)
-                    {
-                        string chunkCompletion = result.Content.ConvertToString();
-                        completionList.Add(chunkCompletion);
-                        foreach (var content in completionList)
-                        {
-                            yield return content.ConvertToString();
-                        }
-                        break;
-                    }
-
-                    history.Add(result);
-
-                    IEnumerable<FunctionCallContent> functionCalls = FunctionCallContent.GetFunctionCalls(result);
-                    if (!functionCalls.Any())
-                    {
-                        break;
-                    }
-
-                    foreach (var functionCall in functionCalls)
-                    {
-                        FunctionResultContent resultContent = await functionCall.InvokeAsync(_kernel);
-
-                        history.Add(resultContent.ToChatMessage());
-                    }
-                }
-            }
-            else
-            {
-                var chatResult = chat.GetStreamingChatMessageContentsAsync(history, settings, _kernel);
-                await foreach (var content in chatResult)
-                {
-                    yield return content.ConvertToString();
-                }
-            }
+            var kernel = _kernelService.GetKernelByApp(app);
+            var settings = new OpenAIPromptExecutionSettings { Temperature = app.Temperature / 100 };
+            bool hasCustomTools = !string.IsNullOrEmpty(app.ApiFunctionList) || !string.IsNullOrEmpty(app.NativeFunctionList);
+            if (hasCustomTools) _kernelService.ImportFunctionsByApp(app, kernel);
+            using var httpClient = _httpClientFactory.CreateClient("ParallelSearch");
+            var conversation = searchConversation ?? WebSearchConversation.ForHistory(history);
+            await foreach (var content in ChatToolRunner.RunAsync(kernel, history, settings,
+                app.EnableWebSearch == true, hasCustomTools, httpClient, conversation.Id, cancellationToken))
+                yield return content;
         }
 
         public async IAsyncEnumerable<StreamingKernelContent> SendKmsByAppAsync(Apps app, string questions, ChatHistory history, string filePath, List<RelevantSource> relevantSources = null)

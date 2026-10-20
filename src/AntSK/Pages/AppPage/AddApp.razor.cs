@@ -31,7 +31,12 @@ namespace AntSK.Pages.AppPage
         [Inject]
         protected FunctionService _functionService { get; set; }
 
-        private Apps _appModel = new Apps();
+        private Apps _appModel = new Apps { EnableWebSearch = true };
+        private bool EnableWebSearch
+        {
+            get => _appModel.EnableWebSearch == true;
+            set => _appModel.EnableWebSearch = value;
+        }
 
         IEnumerable<string> kmsIds;
 

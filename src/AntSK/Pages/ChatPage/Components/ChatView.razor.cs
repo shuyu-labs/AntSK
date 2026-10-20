@@ -1,4 +1,5 @@
-﻿using AntDesign;
+﻿using AntSK.Domain.Domain.Other.Search;
+using AntDesign;
 using AntSK.Domain.Domain.Interface;
 using AntSK.Domain.Domain.Model;
 using AntSK.Domain.Domain.Model.Dto;
@@ -59,6 +60,8 @@ namespace AntSK.Pages.ChatPage.Components
         private List<RelevantSource> _relevantSources = new List<RelevantSource>();
 
         private string _userName { get; set; }
+        private WebSearchConversation _searchConversation = new();
+        private string SearchConversationKey => $"web-search-conversation:{AppId}:{_userName}";
 
         protected override async Task OnInitializedAsync()
         {
@@ -82,6 +85,9 @@ namespace AntSK.Pages.ChatPage.Components
             var userSessionStorageResult = await _protectedSessionStore.GetAsync<UserSession>("UserSession");
             var userSession = userSessionStorageResult.Success ? userSessionStorageResult.Value : null;
             _userName = userSession?.UserName;
+            _searchConversation = await _localStorage.GetItemAsync<WebSearchConversation>(SearchConversationKey)
+                ?? new WebSearchConversation();
+            await _localStorage.SetItemAsync(SearchConversationKey, _searchConversation);
             await GetMsgList();
             await MarkDown();
         }
@@ -114,6 +120,8 @@ namespace AntSK.Pages.ChatPage.Components
         private async Task ClearMsgList() 
         {
             MessageList.Clear();
+            _searchConversation = new WebSearchConversation();
+            await _localStorage.SetItemAsync(SearchConversationKey, _searchConversation);
             if (string.IsNullOrEmpty(_userName))
             {
                 await _localStorage.SetItemAsync<List<Chats>>($"msgs:{AppId}", MessageList);
@@ -315,7 +323,7 @@ namespace AntSK.Pages.ChatPage.Components
         private async Task SendChat(ChatHistory history, Apps app)
         {
             Chats info = null;
-            var chatResult = _chatService.SendChatByAppAsync(app, history);
+            var chatResult = _chatService.SendChatByAppAsync(app, history, _searchConversation);
             StringBuilder rawContent = new StringBuilder();
             await foreach (var content in chatResult)
             {

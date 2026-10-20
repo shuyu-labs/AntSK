@@ -64,7 +64,7 @@ namespace AntSK.Services.OpenApi
                             result2.created = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                             result2.choices = new List<ChoicesModel>()
                                 { new ChoicesModel() { message = new OpenAIMessage() { role = "assistant" } } };
-                            result2.choices[0].message.content = await SendChat(history, app);
+                            result2.choices[0].message.content = await SendChat(history, app, HttpContext.RequestAborted);
                             HttpContext.Response.ContentType = "application/json";
                             await HttpContext.Response.WriteAsync(JsonConvert.SerializeObject(result2));
                             await HttpContext.Response.CompleteAsync();
@@ -100,7 +100,7 @@ namespace AntSK.Services.OpenApi
         private async Task SendChatStream(HttpContext HttpContext, OpenAIStreamResult result, Apps app, ChatHistory history)
         {
             HttpContext.Response.Headers.Add("Content-Type", "text/event-stream;charset=utf-8");
-            var chatResult = _chatService.SendChatByAppAsync(app, history);
+            var chatResult = _chatService.SendChatByAppAsync(app, history, cancellationToken: HttpContext.RequestAborted);
             await foreach (var content in chatResult)
             {
                 result.choices[0].delta.content = content.ConvertToString();
@@ -123,48 +123,12 @@ namespace AntSK.Services.OpenApi
         /// <param name="history"></param>
         /// <param name="app"></param>
         /// <returns></returns>
-        private async Task<string> SendChat(ChatHistory history, Apps app)
+        private async Task<string> SendChat(ChatHistory history, Apps app, CancellationToken cancellationToken)
         {
-            var _kernel = _kernelService.GetKernelByApp(app);
-            var chat = _kernel.GetRequiredService<IChatCompletionService>();
-
-            var temperature = app.Temperature / 100;//存的是0~100需要缩小
-            OpenAIPromptExecutionSettings settings = new() { Temperature = temperature };
-            List<string> completionList = new List<string>();
-            if (!string.IsNullOrEmpty(app.ApiFunctionList) || !string.IsNullOrEmpty(app.NativeFunctionList))//这里还需要加上本地插件的
-            {
-                _kernelService.ImportFunctionsByApp(app, _kernel);
-                settings.ToolCallBehavior = ToolCallBehavior.EnableKernelFunctions;
-                while (true)
-                {
-                    ChatMessageContent result = await chat.GetChatMessageContentAsync(history, settings, _kernel);
-                    if (result.Content is not null)
-                    {
-                        string chunkCompletion = result.Content.ConvertToString();
-                        completionList.Add(chunkCompletion);
-                        return chunkCompletion;
-                    }
-                    history.Add(result);
-                    IEnumerable<FunctionCallContent> functionCalls = FunctionCallContent.GetFunctionCalls(result);
-                    if (!functionCalls.Any())
-                    {
-                        break;
-                    }
-
-                    foreach (var functionCall in functionCalls)
-                    {
-                        FunctionResultContent resultContent = await functionCall.InvokeAsync(_kernel);
-
-                        history.Add(resultContent.ToChatMessage());
-                    }
-                }
-            }
-            else
-            {
-                ChatMessageContent result = await chat.GetChatMessageContentAsync(history, settings, _kernel);
-                return result.Content.ConvertToString();
-            }
-            return "";
+            var result = new StringBuilder();
+            await foreach (var content in _chatService.SendChatByAppAsync(app, history, cancellationToken: cancellationToken))
+                result.Append(content);
+            return result.ToString();
         }
 
         private async Task SendKmsStream(HttpContext HttpContext, OpenAIStreamResult result, Apps app, string questions,ChatHistory history)
