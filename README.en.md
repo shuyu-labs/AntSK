@@ -1,6 +1,8 @@
 [简体中文](./README.md) | English
 # AntSK
 
+Chat applications using OpenAI-compatible tool-calling models support keyless Parallel web search and page fetching. New applications enable it by default; existing applications remain disabled. See [web search and offline settings](docs/develop/web-search.md).
+
 **Enterprise-grade LLM AI Knowledge Base / Agent Platform / AI Appliance — built on .NET 9 + Blazor + Semantic Kernel + Kernel Memory**
 
 [![GitHub stars](https://img.shields.io/github/stars/shuyu-labs/AntSK?style=social)](https://github.com/shuyu-labs/AntSK/stargazers)

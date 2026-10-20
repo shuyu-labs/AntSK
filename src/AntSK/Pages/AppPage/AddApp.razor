@@ -61,6 +61,10 @@
                 
                 @if (@context.Type == AppType.chat.ToString())
                 {
+                    <FormItem Label="联网搜索" LabelCol="LayoutModel._formItemLayout.LabelCol" WrapperCol="LayoutModel._formItemLayout.WrapperCol">
+                        <Switch @bind-Checked="EnableWebSearch" />
+                        <p>允许模型通过 Parallel 搜索和读取外部网页，无需 API Key。搜索问题和所读取的 URL 会发送到外部服务；离线或敏感数据应用请关闭。已有应用默认关闭。需要支持 OpenAI 兼容工具调用的模型，SparkDesk 暂不支持此功能。</p>
+                    </FormItem>
                     <FormItem Label="API插件列表" LabelCol="LayoutModel._formItemLayout.LabelCol" WrapperCol="LayoutModel._formItemLayout.WrapperCol">
                         <Select Mode="multiple"
                                 @bind-Values="apiIds"

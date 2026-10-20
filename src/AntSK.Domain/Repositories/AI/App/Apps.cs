@@ -74,6 +74,12 @@ namespace AntSK.Domain.Repositories
         public string? NativeFunctionList { get; set; }
 
         /// <summary>
+        /// 允许会话应用通过 Parallel 搜索外部网页；已有应用保持关闭。
+        /// </summary>
+        [SugarColumn(IsNullable = true)]
+        public bool? EnableWebSearch { get; set; }
+
+        /// <summary>
         /// 知识库ID列表
         /// </summary>
         [SugarColumn(ColumnDataType = "varchar(1000)")]

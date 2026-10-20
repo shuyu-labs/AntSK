@@ -1,6 +1,8 @@
 中文|[English](./README.en.md) 
 # AntSK
 
+使用 OpenAI 兼容工具调用模型的会话应用支持无需 API Key 的 Parallel 联网搜索和网页读取，新增应用默认开启，已有应用保持关闭。[配置与离线使用说明](docs/develop/web-search.md)。
+
 **企业级大模型 AI 知识库 / 智能体平台 / AI 一体机 —— 基于 .NET 9 + Blazor + Semantic Kernel + Kernel Memory**
 
 [![GitHub stars](https://img.shields.io/github/stars/shuyu-labs/AntSK?style=social)](https://github.com/shuyu-labs/AntSK/stargazers)

@@ -38,6 +38,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AntSK.AppHost", "AntSK.AppH
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AntSK.ServiceDefaults", "AntSK.ServiceDefaults\AntSK.ServiceDefaults.csproj", "{21AC6184-336E-475F-8975-80A39D59B0CC}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AntSK.Search.Tests", "AntSK.Search.Tests\AntSK.Search.Tests.csproj", "{2C80125D-BE3D-4212-B6DE-75205A0A3ED7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -80,6 +82,10 @@ Global
 		{21AC6184-336E-475F-8975-80A39D59B0CC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{21AC6184-336E-475F-8975-80A39D59B0CC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{21AC6184-336E-475F-8975-80A39D59B0CC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C80125D-BE3D-4212-B6DE-75205A0A3ED7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C80125D-BE3D-4212-B6DE-75205A0A3ED7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C80125D-BE3D-4212-B6DE-75205A0A3ED7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C80125D-BE3D-4212-B6DE-75205A0A3ED7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

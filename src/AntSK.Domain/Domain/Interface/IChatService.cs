@@ -1,4 +1,5 @@
-﻿using AntSK.Domain.Domain.Model;
+﻿using AntSK.Domain.Domain.Other.Search;
+using AntSK.Domain.Domain.Model;
 using AntSK.Domain.Domain.Model.Dto;
 using AntSK.Domain.Repositories;
 using Microsoft.SemanticKernel;
@@ -14,7 +15,7 @@ namespace AntSK.Domain.Domain.Interface
 {
     public interface IChatService
     {
-        IAsyncEnumerable<string> SendChatByAppAsync(Apps app, ChatHistory history);
+        IAsyncEnumerable<string> SendChatByAppAsync(Apps app, ChatHistory history, WebSearchConversation? searchConversation = null, CancellationToken cancellationToken = default);
 
         IAsyncEnumerable<StreamingKernelContent> SendKmsByAppAsync(Apps app, string questions, ChatHistory history, string filePath, List<RelevantSource> relevantSources = null);
         Task<ChatHistory> GetChatHistory(List<Chats> MessageList, ChatHistory history);

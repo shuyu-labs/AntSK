@@ -23,6 +23,7 @@ using System.Text.Unicode;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
+builder.Services.AddHttpClient("ParallelSearch", client => client.Timeout = TimeSpan.FromSeconds(30));
 builder.Services.AddControllers().AddJsonOptions(config =>
 {
     //此设定解决JsonResult中文被编码的问题

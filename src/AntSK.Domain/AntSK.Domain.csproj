@@ -26,6 +26,7 @@
     <PackageReference Include="RestSharp" Version="$(RestSharpVersion)" />
     <PackageReference Include="NPOI" Version="2.7.1" />
 
+    <PackageReference Include="ModelContextProtocol.Core" Version="1.4.1" />
     <PackageReference Include="Microsoft.SemanticKernel" Version="$(SKVersion)" />
     <PackageReference Include="Microsoft.SemanticKernel.Core" Version="$(SKVersion)" />
     <PackageReference Include="Microsoft.SemanticKernel.Plugins.Core" Version="$(SKVersion)-alpha" />
